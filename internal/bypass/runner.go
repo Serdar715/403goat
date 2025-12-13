@@ -18,16 +18,18 @@ import (
 )
 
 type Runner struct {
-	Client      *http.Client
-	Config      utils.Config
-	Results     chan utils.Result
-	Payloads    []string
-	BaseHeaders map[string]string
+	Client        *http.Client
+	Config        utils.Config
+	Results       chan utils.Result
+	Payloads      []string
+	BaseHeaders   map[string]string
+	DefaultMethod string
 }
 
 func NewRunner(cfg utils.Config, client *http.Client) (*Runner, error) {
 	var baseHeaders map[string]string
 	var targetURLStr string = cfg.URL
+	var method string = "GET"
 
 	// 1. If Request File is provided, parse it
 	if cfg.RequestFile != "" {
@@ -37,6 +39,7 @@ func NewRunner(cfg utils.Config, client *http.Client) (*Runner, error) {
 		}
 		targetURLStr = parsed.URL.String()
 		baseHeaders = parsed.Headers
+		method = parsed.Method
 		// Update cfg.URL so other parts use the correct full URL
 		cfg.URL = targetURLStr
 		utils.LogInfo("Loaded request from file. Target: %s", targetURLStr)
@@ -52,11 +55,12 @@ func NewRunner(cfg utils.Config, client *http.Client) (*Runner, error) {
 	payloads := generatePayloadsByMode(cfg, path)
 
 	return &Runner{
-		Client:      client,
-		Config:      cfg,
-		Results:     make(chan utils.Result),
-		Payloads:    payloads,
-		BaseHeaders: baseHeaders,
+		Client:        client,
+		Config:        cfg,
+		Results:       make(chan utils.Result),
+		Payloads:      payloads,
+		BaseHeaders:   baseHeaders,
+		DefaultMethod: method,
 	}, nil
 }
 
@@ -64,7 +68,17 @@ func (r *Runner) Run() {
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, r.Config.Threads)
 
-	totalRequests := len(r.Payloads) * len(utils.HTTPMethods) * (len(utils.BypassHeaders) + 4)
+	// Calculate total requests approximately for progress bar
+	// 1. Path Fuzzing (Prefixes + Suffixes)
+	countPath := len(r.Payloads)
+	// 2. Method Fuzzing (HTTP Methods)
+	countMethods := len(utils.HTTPMethods)
+	// 3. Header Fuzzing (Headers * IPs + Headers * 1)
+	countHeaders := len(utils.BypassHeaders) * (len(utils.BypassIPs) + 1)
+	// 4. Common Headers
+	countCommon := 3
+
+	totalRequests := countPath + countMethods + countHeaders + countCommon
 
 	var bar *pb.ProgressBar
 	if r.Config.ShowProgress && r.Config.Verbose == 0 {
@@ -73,35 +87,55 @@ func (r *Runner) Run() {
 		defer bar.Finish()
 	}
 
+	// Default values from config/request file
+	defaultMethod := r.DefaultMethod
+	// If baseHeaders has a specific method from file, use it?
+	// Actually, usually we test with GET or the file's method.
+	// But let's assume "GET" is the standard unless we are fuzzing methods.
+	// Wait, if user provided a POST request file, we should probably default to that method for path fuzzing?
+	// The NewRunner parsing sets a method variable but it wasn't stored in Runner struct.
+	// Let's assume GET for now or better, store DefaultMethod in Runner if needed.
+	// For simplicity and standard behavior, typical 403 bypass tools default to GET for path manipulation.
+
+	// TASK 1: Path Fuzzing (Original Method + Fuzzed Path)
+	// Iterates through all generated payloads (prefixes/suffixes/original)
 	for _, payload := range r.Payloads {
-		for _, method := range utils.HTTPMethods {
-			// 1. Basic Request
-			r.submitTask(&wg, sem, bar, method, payload, nil)
+		r.submitTask(&wg, sem, bar, defaultMethod, payload, nil)
+	}
 
-			// 2. Header Based Bypass - Single Header Test
-			for _, h := range utils.BypassHeaders {
-				// Bypass logic 1: Header set to "/"
-				r.submitTask(&wg, sem, bar, method, payload, map[string]string{h: "/"})
+	// TASK 2: Method Fuzzing (Fuzzed Method + Original Path)
+	// We need the "clean" path for this. r.Payloads[0] is usually the original path appended first.
+	// But let's act on the raw path derived from URL.
+	u, _ := url.Parse(r.Config.URL) // Config.URL is full URL
+	cleanPath := u.Path
+	if cleanPath == "" {
+		cleanPath = "/"
+	}
+	// Ensure pure path without scheme/host
 
-				// Bypass logic 2: Header set to internal IPs
-				for _, ip := range utils.BypassIPs {
-					r.submitTask(&wg, sem, bar, method, payload, map[string]string{h: ip})
-				}
-			}
+	for _, method := range utils.HTTPMethods {
+		// Skip if it is the default method we already tested in Task 1 (e.g. GET)
+		if method == defaultMethod {
+			continue
+		}
+		r.submitTask(&wg, sem, bar, method, cleanPath, nil)
+	}
 
-			// 3. Common Headers - Test individually to isolate bypass
-			r.submitTask(&wg, sem, bar, method, payload, map[string]string{
-				"Referer": r.Config.URL,
-			})
-			r.submitTask(&wg, sem, bar, method, payload, map[string]string{
-				"Origin": r.Config.URL,
-			})
-			r.submitTask(&wg, sem, bar, method, payload, map[string]string{
-				"User-Agent": "Googlebot/2.1",
-			})
+	// TASK 3: Header Fuzzing (Original Method + Original Path + Fuzzed Headers)
+	for _, h := range utils.BypassHeaders {
+		// 3.1: Header value "/"
+		r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{h: "/"})
 
+		// 3.2: Header value = Internal IPs
+		for _, ip := range utils.BypassIPs {
+			r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{h: ip})
 		}
 	}
+
+	// TASK 4: Common Bypass Headers (Original Method + Original Path)
+	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Referer": r.Config.URL})
+	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Origin": r.Config.URL})
+	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"User-Agent": "Googlebot/2.1"})
 
 	wg.Wait()
 	close(r.Results)
