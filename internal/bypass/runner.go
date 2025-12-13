@@ -38,11 +38,16 @@ func NewRunner(cfg utils.Config, client *http.Client) (*Runner, error) {
 			return nil, fmt.Errorf("failed to parse request file: %v", err)
 		}
 		targetURLStr = parsed.URL.String()
-		baseHeaders = parsed.Headers
+
+		// Convert http.Header to map[string]string
+		baseHeaders = make(map[string]string)
+		for k, v := range parsed.Headers {
+			baseHeaders[k] = strings.Join(v, ", ")
+		}
+
 		method = parsed.Method
 		// Update cfg.URL so other parts use the correct full URL
 		cfg.URL = targetURLStr
-		utils.LogInfo("Loaded request from file. Target: %s", targetURLStr)
 	}
 
 	// 2. Generate payloads

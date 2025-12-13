@@ -1,10 +1,9 @@
 package utils
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
-	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -13,131 +12,112 @@ import (
 type ParsedRequest struct {
 	Method  string
 	URL     *url.URL
-	Headers map[string]string
+	Headers http.Header
 	Body    []byte
 }
 
 func ParseRawRequest(filename string, targetURL string) (*ParsedRequest, error) {
-	file, err := os.Open(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("could not open request file: %v", err)
 	}
-	defer file.Close()
 
-	// Read the entire file into a buffer to handle body parsing easily
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("could not read request file: %v", err)
+	// Normalize line endings (CRLF -> LF)
+	content = bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+	content = bytes.ReplaceAll(content, []byte("\r"), []byte("\n"))
+
+	lines := strings.Split(string(content), "\n")
+	if len(lines) < 1 {
+		return nil, fmt.Errorf("empty request file")
 	}
-
-	reader := bufio.NewReader(bytes.NewReader(content))
 
 	// 1. Parse Request Line
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, fmt.Errorf("malformed request file: %v", err)
-	}
-	line = strings.TrimSpace(line)
-	parts := strings.Split(line, " ")
+	requestLine := strings.TrimSpace(lines[0])
+	parts := strings.Fields(requestLine)
 	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid request line: %s", line)
+		return nil, fmt.Errorf("invalid request line: %s", requestLine)
 	}
 	method := parts[0]
 	path := parts[1]
 
 	// 2. Parse Headers
-	headers := make(map[string]string)
+	headers := make(http.Header)
 	var host string
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-
-		// Remove CR and LF and other whitespace
-		cleanLine := strings.TrimSpace(line)
-		cleanLine = strings.Trim(cleanLine, "\r\n")
-
-		if cleanLine == "" {
-			// End of headers
+	lineIndex := 1
+	for lineIndex < len(lines) {
+		line := strings.TrimSpace(lines[lineIndex])
+		if line == "" {
+			lineIndex++
 			break
 		}
 
-		// Split header into key: value
-		colonIdx := strings.Index(cleanLine, ":")
+		colonIdx := strings.Index(line, ":")
 		if colonIdx > 0 {
-			key := strings.TrimSpace(cleanLine[:colonIdx])
-			val := strings.TrimSpace(cleanLine[colonIdx+1:])
-			headers[key] = val
+			key := strings.TrimSpace(line[:colonIdx])
+			val := strings.TrimSpace(line[colonIdx+1:])
+			headers.Set(key, val)
 
-			// Check for Host header (case-insensitive)
 			if strings.ToLower(key) == "host" {
 				host = val
 			}
 		}
-
-		if err == io.EOF {
-			break
-		}
+		lineIndex++
 	}
 
-	// 3. Parse Body
-	body, _ := io.ReadAll(reader)
+	// 3. Parse Body (remaining lines)
+	var bodyLines []string
+	for lineIndex < len(lines) {
+		bodyLines = append(bodyLines, lines[lineIndex])
+		lineIndex++
+	}
+	body := []byte(strings.Join(bodyLines, "\n"))
 
 	// 4. Construct URL
-	// If targetURL is provided via flag, use its scheme and host, but prefer path from request?
-	// Or if targetURL is NOT provided, try to build from Host header.
-
 	var finalURL *url.URL
 
-	if targetURL != "" {
-		// If user provided -u, use that as base.
+	if targetURL != "" && targetURL != "https://" {
+		// User provided -u, use that as base
 		u, err := url.Parse(targetURL)
 		if err != nil {
 			return nil, fmt.Errorf("invalid target URL: %v", err)
 		}
-
-		// If the raw request path is absolute, use it. checking if it starts with http
-		// But usually raw request path is relative like /admin
-
-		finalURL = u // start with base
-		// Update path from request
-		// If u.Path is empty, usually we use the one from request.
-		// If request path is just /, and user provided /admin, maybe user wants /admin?
-		// Usually raw request file implies the specific endpoint to test.
-		// So we overwrite the path.
-
-		if len(path) > 0 {
-			// Handle if path is full URL
-			if strings.HasPrefix(path, "http") {
-				u2, err := url.Parse(path)
-				if err == nil {
-					finalURL = u2
-				}
-			} else {
-				finalURL.Path = path
-			}
+		finalURL = u
+		if len(path) > 0 && !strings.HasPrefix(path, "http") {
+			finalURL.Path = path
 		}
 	} else {
-		// Try to construct from Host header
+		// Build from Host header
 		if host == "" {
-			return nil, fmt.Errorf("no Host header found in request file and no -u URL provided")
+			return nil, fmt.Errorf("no Host header found in request file. Headers found: %v", headers)
 		}
-		host = strings.TrimSpace(host)
 
-		// Default to https
 		scheme := "https"
+		if strings.Contains(host, ":80") && !strings.Contains(host, ":8080") {
+			scheme = "http"
+		}
 
-		// Ensure path starts with /
-		if !strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "http") {
+		if !strings.HasPrefix(path, "/") {
 			path = "/" + path
 		}
 
 		rawURL := fmt.Sprintf("%s://%s%s", scheme, host, path)
 		finalURL, err = url.Parse(rawURL)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to construct URL: %v", err)
 		}
+	}
+
+	// Print parsed info (FFuf-like)
+	LogInfo("Request File Parsed:")
+	LogInfo("  ├─ Method: %s", method)
+	LogInfo("  ├─ Path: %s", path)
+	LogInfo("  ├─ Host: %s", host)
+	LogInfo("  ├─ Headers: %d", len(headers))
+	for k, v := range headers {
+		LogInfo("  │   └─ %s: %s", k, strings.Join(v, ", "))
+	}
+	if len(body) > 0 {
+		LogInfo("  └─ Body: %d bytes", len(body))
 	}
 
 	return &ParsedRequest{
