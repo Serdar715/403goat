@@ -1,4 +1,4 @@
-module 403goat
+module github.com/Serdar715/403goat
 
 go 1.25.4
 

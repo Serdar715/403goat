@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"403goat/internal/bypass"
-	"403goat/internal/utils"
+	"github.com/Serdar715/403goat/internal/bypass"
+	"github.com/Serdar715/403goat/internal/utils"
 
 	"github.com/fatih/color"
 )
