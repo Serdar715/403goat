@@ -6,16 +6,15 @@
 
 **403goat** is a professional, advanced 403/401 Forbidden/Unauthorized bypass tool written in Go. It automates testing of headers, paths, and methods to bypass access controls.
 
-![Banner](https://github.com/Serdar715/403goat/raw/main/assets/banner.png) 
-*(Note: Banner image placeholder)*
+## 📦 Installation (One-Liner)
 
-## 📦 Installation
+Copy and run this command to install and verify 403goat globally:
 
 ```bash
-go install github.com/Serdar715/403goat@latest
+git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 403goat main.go && sudo mv 403goat /usr/local/bin/
 ```
 
-Ensure your Go bin directory is in your PATH.
+Now you can run **403goat** from anywhere in your terminal.
 
 ## 🛠️ Usage
 
