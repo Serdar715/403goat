@@ -60,8 +60,12 @@ func main() {
 				statusColor = color.YellowString
 			}
 
-			// Build output string
-			output := fmt.Sprintf("[%s] %s %s - %s", statusColor("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), res.URL)
+			// Build output string with technique info
+			techniqueStr := ""
+			if res.Technique != "" {
+				techniqueStr = fmt.Sprintf(" [%s]", color.HiBlueString(res.Technique))
+			}
+			output := fmt.Sprintf("[%s] %s %s%s - %s", statusColor("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), techniqueStr, res.URL)
 
 			// Add redirect info if present
 			if res.RedirectURL != "" {
@@ -118,7 +122,13 @@ func parseFlags() utils.Config {
 	flag.StringVar(&filterCodesStr, "fc", "", "Filter status codes (comma-separated, e.g., 403,404,500)")
 	flag.BoolVar(&cfg.DebugRequest, "debug", false, "Show raw HTTP request/response details")
 
+	// Custom headers flag - can be used multiple times
+	var customHeaders headerFlags
+	flag.Var(&customHeaders, "H", "Custom header (can be used multiple times, e.g., -H 'Cookie: xxx')")
+
 	flag.Parse()
+
+	cfg.CustomHeaders = customHeaders
 
 	if cfg.URL == "" && len(flag.Args()) > 0 {
 		cfg.URL = flag.Arg(0)
@@ -140,6 +150,18 @@ func parseFlags() utils.Config {
 	}
 
 	return cfg
+}
+
+// Custom flag type for multiple -H flags
+type headerFlags []string
+
+func (h *headerFlags) String() string {
+	return strings.Join(*h, ", ")
+}
+
+func (h *headerFlags) Set(value string) error {
+	*h = append(*h, value)
+	return nil
 }
 
 func saveResults(results []utils.Result, cfg utils.Config) {

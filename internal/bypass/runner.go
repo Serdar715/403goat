@@ -85,6 +85,20 @@ func (r *Runner) Run() {
 
 	totalRequests := countPath + countMethods + countHeaders + countCommon
 
+	// Display scan info
+	utils.LogInfo("Scan Configuration:")
+	utils.LogInfo("  ├─ Path Payloads: %d", countPath)
+	utils.LogInfo("  ├─ HTTP Methods: %d", countMethods)
+	utils.LogInfo("  ├─ Header Tests: %d", countHeaders)
+	utils.LogInfo("  └─ Total Requests: %d", totalRequests)
+
+	if len(r.Config.CustomHeaders) > 0 {
+		utils.LogInfo("Custom Headers:")
+		for _, h := range r.Config.CustomHeaders {
+			utils.LogInfo("  └─ %s", h)
+		}
+	}
+
 	var bar *pb.ProgressBar
 	if r.Config.ShowProgress && r.Config.Verbose == 0 {
 		bar = pb.StartNew(totalRequests)
@@ -96,50 +110,43 @@ func (r *Runner) Run() {
 	defaultMethod := r.DefaultMethod
 
 	// TASK 1: Path Fuzzing (Original Method + Fuzzed Path)
-	// Iterates through all generated payloads (prefixes/suffixes/original)
 	for _, payload := range r.Payloads {
-		r.submitTask(&wg, sem, bar, defaultMethod, payload, nil)
+		r.submitTask(&wg, sem, bar, defaultMethod, payload, nil, "path")
 	}
 
 	// TASK 2: Method Fuzzing (Fuzzed Method + Original Path)
-	// We need the "clean" path for this. r.Payloads[0] is usually the original path appended first.
-	// But let's act on the raw path derived from URL.
-	u, _ := url.Parse(r.Config.URL) // Config.URL is full URL
+	u, _ := url.Parse(r.Config.URL)
 	cleanPath := u.Path
 	if cleanPath == "" {
 		cleanPath = "/"
 	}
-	// Ensure pure path without scheme/host
 
 	for _, method := range utils.HTTPMethods {
-		// Skip if it is the default method we already tested in Task 1 (e.g. GET)
 		if method == defaultMethod {
 			continue
 		}
-		r.submitTask(&wg, sem, bar, method, cleanPath, nil)
+		r.submitTask(&wg, sem, bar, method, cleanPath, nil, "method")
 	}
 
 	// TASK 3: Header Fuzzing (Original Method + Original Path + Fuzzed Headers)
 	for _, h := range utils.BypassHeaders {
-		// 3.1: Header value "/"
-		r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{h: "/"})
+		r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{h: "/"}, "header:"+h)
 
-		// 3.2: Header value = Internal IPs
 		for _, ip := range utils.BypassIPs {
-			r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{h: ip})
+			r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{h: ip}, "header:"+h+"="+ip)
 		}
 	}
 
-	// TASK 4: Common Bypass Headers (Original Method + Original Path)
-	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Referer": r.Config.URL})
-	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Origin": r.Config.URL})
-	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"User-Agent": "Googlebot/2.1"})
+	// TASK 4: Common Bypass Headers
+	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Referer": r.Config.URL}, "header:Referer")
+	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Origin": r.Config.URL}, "header:Origin")
+	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"User-Agent": "Googlebot/2.1"}, "header:User-Agent")
 
 	wg.Wait()
 	close(r.Results)
 }
 
-func (r *Runner) submitTask(wg *sync.WaitGroup, sem chan struct{}, bar *pb.ProgressBar, method, payload string, extraHeaders map[string]string) {
+func (r *Runner) submitTask(wg *sync.WaitGroup, sem chan struct{}, bar *pb.ProgressBar, method, payload string, extraHeaders map[string]string, technique string) {
 	sem <- struct{}{}
 	wg.Add(1)
 	go func() {
@@ -148,14 +155,14 @@ func (r *Runner) submitTask(wg *sync.WaitGroup, sem chan struct{}, bar *pb.Progr
 		if bar != nil {
 			bar.Increment()
 		}
-		r.executeRequest(method, payload, extraHeaders)
+		r.executeRequest(method, payload, extraHeaders, technique)
 	}()
 }
 
-func (r *Runner) executeRequest(method, payload string, extraHeaders map[string]string) {
+func (r *Runner) executeRequest(method, payload string, extraHeaders map[string]string, technique string) {
 	// If payload is already a full URL, use it
 	if strings.HasPrefix(payload, "http") {
-		r.doRequest(method, payload, payload, extraHeaders)
+		r.doRequest(method, payload, payload, extraHeaders, technique)
 		return
 	}
 
@@ -172,10 +179,10 @@ func (r *Runner) executeRequest(method, payload string, extraHeaders map[string]
 		fullURL = hostPart + "/" + payload
 	}
 
-	r.doRequest(method, fullURL, payload, extraHeaders)
+	r.doRequest(method, fullURL, payload, extraHeaders, technique)
 }
 
-func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[string]string) {
+func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[string]string, technique string) {
 	req, err := http.NewRequest(method, fullURL, nil)
 
 	if err != nil {
@@ -186,6 +193,14 @@ func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[str
 	if len(r.BaseHeaders) > 0 {
 		for k, v := range r.BaseHeaders {
 			req.Header.Set(k, v)
+		}
+	}
+
+	// Apply Custom Headers from -H flag
+	for _, h := range r.Config.CustomHeaders {
+		parts := strings.SplitN(h, ":", 2)
+		if len(parts) == 2 {
+			req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 		}
 	}
 
@@ -221,6 +236,7 @@ func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[str
 		ContentLen: resp.ContentLength,
 		Headers:    make(map[string]string),
 		Payload:    payload,
+		Technique:  technique,
 		URL:        fullURL,
 		Time:       duration,
 	}

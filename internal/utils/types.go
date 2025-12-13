@@ -21,6 +21,7 @@ type Config struct {
 	FilterCodes    []int
 	DebugRequest   bool
 	RequestFile    string
+	CustomHeaders  []string
 }
 
 type Result struct {
@@ -34,4 +35,5 @@ type Result struct {
 	Time           time.Duration     `json:"response_time"`
 	RedirectURL    string            `json:"redirect_url,omitempty"`
 	RedirectStatus int               `json:"redirect_status,omitempty"`
+	Technique      string            `json:"technique,omitempty"`
 }
