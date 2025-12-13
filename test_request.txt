@@ -1,0 +1,6 @@
+GET /admin HTTP/1.1
+Host: google.com
+User-Agent: BurpSuite/Professional
+Cookie: session=123456789;
+Accept: */*
+
