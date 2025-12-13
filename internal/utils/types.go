@@ -19,9 +19,18 @@ type Config struct {
 	ShowProgress   bool
 	LimitPayloads  int
 	FilterCodes    []int
+	MatchCodes     []int
+	FilterSize     int64
+	MatchRegex     string
+	RateLimit      int
 	DebugRequest   bool
 	RequestFile    string
 	CustomHeaders  []string
+	WordlistFile   string
+	URLListFile    string
+	EnableUnicode  bool
+	EnableCase     bool
+	EnableDouble   bool
 }
 
 type Result struct {

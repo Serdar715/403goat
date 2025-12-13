@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -152,6 +153,12 @@ func (r *Runner) submitTask(wg *sync.WaitGroup, sem chan struct{}, bar *pb.Progr
 	go func() {
 		defer wg.Done()
 		defer func() { <-sem }()
+
+		// Rate limiting
+		if r.Config.RateLimit > 0 {
+			time.Sleep(time.Second / time.Duration(r.Config.RateLimit))
+		}
+
 		if bar != nil {
 			bar.Increment()
 		}
@@ -223,9 +230,40 @@ func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[str
 	defer resp.Body.Close()
 	duration := time.Since(start)
 
-	// Filter Logic
+	// Read body for filtering
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	bodyLen := int64(len(bodyBytes))
+
+	// Filter by status codes
 	for _, fc := range r.Config.FilterCodes {
 		if resp.StatusCode == fc {
+			return
+		}
+	}
+
+	// Match codes filter (if set, only show these codes)
+	if len(r.Config.MatchCodes) > 0 {
+		matched := false
+		for _, mc := range r.Config.MatchCodes {
+			if resp.StatusCode == mc {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return
+		}
+	}
+
+	// Filter by response size
+	if r.Config.FilterSize > 0 && bodyLen == r.Config.FilterSize {
+		return
+	}
+
+	// Match regex in response body
+	if r.Config.MatchRegex != "" {
+		matched, _ := regexp.MatchString(r.Config.MatchRegex, string(bodyBytes))
+		if !matched {
 			return
 		}
 	}
@@ -233,7 +271,7 @@ func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[str
 	resCopy := utils.Result{
 		Method:     method,
 		StatusCode: resp.StatusCode,
-		ContentLen: resp.ContentLength,
+		ContentLen: bodyLen,
 		Headers:    make(map[string]string),
 		Payload:    payload,
 		Technique:  technique,
@@ -267,8 +305,7 @@ func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[str
 	}
 
 	if r.Config.Verbose >= 2 {
-		body, _ := io.ReadAll(resp.Body)
-		resCopy.Response = string(body)
+		resCopy.Response = string(bodyBytes)
 	}
 
 	r.Results <- resCopy
@@ -347,6 +384,44 @@ func generatePayloadsByMode(cfg utils.Config, path string) []string {
 			randPayloads = append(randPayloads, p+"?rand="+fmt.Sprintf("%d", rand.Intn(999999)))
 		}
 		payloads = append(payloads, randPayloads...)
+	}
+
+	// 6. Unicode bypass payloads
+	if cfg.EnableUnicode {
+		for _, u := range utils.UnicodePrefixes {
+			constructed := strings.TrimRight(u, "/") + "/" + strings.TrimLeft(path, "/")
+			payloads = append(payloads, constructed)
+		}
+	}
+
+	// 7. Case manipulation
+	if cfg.EnableCase {
+		caseVariations := utils.GenerateCaseVariations(path)
+		for _, cv := range caseVariations {
+			if cv != path {
+				payloads = append(payloads, cv)
+				payloads = append(payloads, "/"+cv)
+			}
+		}
+	}
+
+	// 8. Double URL encoding
+	if cfg.EnableDouble {
+		for _, d := range utils.DoubleEncodedPrefixes {
+			constructed := strings.TrimRight(d, "/") + "/" + strings.TrimLeft(path, "/")
+			payloads = append(payloads, constructed)
+		}
+	}
+
+	// 9. Custom wordlist
+	if cfg.WordlistFile != "" {
+		customWords := loadFromFile(cfg.WordlistFile)
+		for _, word := range customWords {
+			payloads = append(payloads, word)
+			if !strings.HasPrefix(word, "/") {
+				payloads = append(payloads, "/"+word)
+			}
+		}
 	}
 
 	payloads = deduplicatePayloads(payloads)

@@ -101,6 +101,7 @@ func parseFlags() utils.Config {
 	cfg := utils.Config{}
 
 	var filterCodesStr string
+	var matchCodesStr string
 
 	flag.StringVar(&cfg.URL, "u", "", "Target URL")
 
@@ -119,8 +120,17 @@ func parseFlags() utils.Config {
 	flag.BoolVar(&cfg.RandomParam, "random", false, "Add random param")
 	flag.BoolVar(&cfg.ShowProgress, "progress", true, "Show progress bar")
 	flag.IntVar(&cfg.LimitPayloads, "limit", 0, "Limit payloads (0=unlimited)")
-	flag.StringVar(&filterCodesStr, "fc", "", "Filter status codes (comma-separated, e.g., 403,404,500)")
+	flag.StringVar(&filterCodesStr, "fc", "", "Filter status codes (comma-separated)")
+	flag.StringVar(&matchCodesStr, "mc", "", "Match status codes (comma-separated)")
+	flag.Int64Var(&cfg.FilterSize, "fs", 0, "Filter response size")
+	flag.StringVar(&cfg.MatchRegex, "mr", "", "Match regex in response body")
+	flag.IntVar(&cfg.RateLimit, "rate", 0, "Rate limit (requests/second, 0=unlimited)")
 	flag.BoolVar(&cfg.DebugRequest, "debug", false, "Show raw HTTP request/response details")
+	flag.StringVar(&cfg.WordlistFile, "w", "", "Custom wordlist file for paths")
+	flag.StringVar(&cfg.URLListFile, "l", "", "File containing list of URLs to scan")
+	flag.BoolVar(&cfg.EnableUnicode, "unicode", false, "Enable Unicode bypass payloads")
+	flag.BoolVar(&cfg.EnableCase, "case", false, "Enable case manipulation payloads")
+	flag.BoolVar(&cfg.EnableDouble, "double-encode", false, "Enable double URL encoding")
 
 	// Custom headers flag - can be used multiple times
 	var customHeaders headerFlags
@@ -145,6 +155,17 @@ func parseFlags() utils.Config {
 			code = strings.TrimSpace(code)
 			if num, err := strconv.Atoi(code); err == nil {
 				cfg.FilterCodes = append(cfg.FilterCodes, num)
+			}
+		}
+	}
+
+	// Parse match codes
+	if matchCodesStr != "" {
+		codes := strings.Split(matchCodesStr, ",")
+		for _, code := range codes {
+			code = strings.TrimSpace(code)
+			if num, err := strconv.Atoi(code); err == nil {
+				cfg.MatchCodes = append(cfg.MatchCodes, num)
 			}
 		}
 	}
