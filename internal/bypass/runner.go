@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"403goat/internal/utils"
+	"github.com/Serdar715/403goat/internal/utils"
 
 	"github.com/cheggaaa/pb/v3"
 )
