@@ -87,15 +87,8 @@ func (r *Runner) Run() {
 		defer bar.Finish()
 	}
 
-	// Default values from config/request file
+	// Use default method from request file or GET
 	defaultMethod := r.DefaultMethod
-	// If baseHeaders has a specific method from file, use it?
-	// Actually, usually we test with GET or the file's method.
-	// But let's assume "GET" is the standard unless we are fuzzing methods.
-	// Wait, if user provided a POST request file, we should probably default to that method for path fuzzing?
-	// The NewRunner parsing sets a method variable but it wasn't stored in Runner struct.
-	// Let's assume GET for now or better, store DefaultMethod in Runner if needed.
-	// For simplicity and standard behavior, typical 403 bypass tools default to GET for path manipulation.
 
 	// TASK 1: Path Fuzzing (Original Method + Fuzzed Path)
 	// Iterates through all generated payloads (prefixes/suffixes/original)

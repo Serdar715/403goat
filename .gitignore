@@ -1,0 +1,21 @@
+# Binaries
+403goat
+403goat.exe
+
+# Output files
+*.json
+*.txt
+!README.md
+
+# IDE
+.vscode/
+.idea/
+
+# Go
+vendor/
+dist/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
