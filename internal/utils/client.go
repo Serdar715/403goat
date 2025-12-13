@@ -21,6 +21,9 @@ func NewHTTPClient(timeoutSec int, proxyUrl string) *http.Client {
 		} else {
 			fmt.Printf("Error parsing proxy URL: %v\n", err)
 		}
+	} else {
+		// Fallback to system env proxy (HTTP_PROXY, HTTPS_PROXY)
+		tr.Proxy = http.ProxyFromEnvironment
 	}
 
 	return &http.Client{
