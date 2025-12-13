@@ -54,18 +54,24 @@ func ParseRawRequest(filename string, targetURL string) (*ParsedRequest, error) 
 			return nil, err
 		}
 
+		// Remove CR and LF and other whitespace
 		cleanLine := strings.TrimSpace(line)
+		cleanLine = strings.Trim(cleanLine, "\r\n")
+
 		if cleanLine == "" {
 			// End of headers
 			break
 		}
 
-		parts := strings.SplitN(cleanLine, ":", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			val := strings.TrimSpace(parts[1])
+		// Split header into key: value
+		colonIdx := strings.Index(cleanLine, ":")
+		if colonIdx > 0 {
+			key := strings.TrimSpace(cleanLine[:colonIdx])
+			val := strings.TrimSpace(cleanLine[colonIdx+1:])
 			headers[key] = val
-			if strings.EqualFold(key, "Host") {
+
+			// Check for Host header (case-insensitive)
+			if strings.ToLower(key) == "host" {
 				host = val
 			}
 		}
