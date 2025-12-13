@@ -59,7 +59,22 @@ func main() {
 			if res.StatusCode >= 300 {
 				statusColor = color.YellowString
 			}
-			fmt.Printf("[%s] %s %s - %s\n", statusColor("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), res.URL)
+
+			// Build output string
+			output := fmt.Sprintf("[%s] %s %s - %s", statusColor("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), res.URL)
+
+			// Add redirect info if present
+			if res.RedirectURL != "" {
+				redirectColor := color.GreenString
+				if res.RedirectStatus >= 400 {
+					redirectColor = color.RedString
+				} else if res.RedirectStatus >= 300 {
+					redirectColor = color.YellowString
+				}
+				output += fmt.Sprintf(" -> [%s] %s", redirectColor("%d", res.RedirectStatus), res.RedirectURL)
+			}
+
+			fmt.Println(output)
 		} else if cfg.Verbose >= 1 {
 			// Print failures if verbose
 			fmt.Printf("[%s] %s %s - %s\n", color.RedString("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), res.URL)

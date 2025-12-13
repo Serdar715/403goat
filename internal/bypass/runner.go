@@ -229,6 +229,27 @@ func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[str
 		resCopy.Headers[k] = strings.Join(v, ", ")
 	}
 
+	// Follow redirects for 3xx responses
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		location := resp.Header.Get("Location")
+		if location != "" {
+			resCopy.RedirectURL = location
+
+			// Make a request to the redirect location
+			redirectReq, err := http.NewRequest("GET", location, nil)
+			if err == nil {
+				// Copy some headers
+				redirectReq.Header.Set("User-Agent", req.Header.Get("User-Agent"))
+
+				redirectResp, err := r.Client.Do(redirectReq)
+				if err == nil {
+					resCopy.RedirectStatus = redirectResp.StatusCode
+					redirectResp.Body.Close()
+				}
+			}
+		}
+	}
+
 	if r.Config.Verbose >= 2 {
 		body, _ := io.ReadAll(resp.Body)
 		resCopy.Response = string(body)

@@ -24,12 +24,14 @@ type Config struct {
 }
 
 type Result struct {
-	Method     string            `json:"method"`
-	StatusCode int               `json:"status_code"`
-	ContentLen int64             `json:"content_length"`
-	Headers    map[string]string `json:"headers"`
-	Payload    string            `json:"payload"`
-	URL        string            `json:"url"`
-	Response   string            `json:"response"`
-	Time       time.Duration     `json:"response_time"`
+	Method         string            `json:"method"`
+	StatusCode     int               `json:"status_code"`
+	ContentLen     int64             `json:"content_length"`
+	Headers        map[string]string `json:"headers"`
+	Payload        string            `json:"payload"`
+	URL            string            `json:"url"`
+	Response       string            `json:"response"`
+	Time           time.Duration     `json:"response_time"`
+	RedirectURL    string            `json:"redirect_url,omitempty"`
+	RedirectStatus int               `json:"redirect_status,omitempty"`
 }
