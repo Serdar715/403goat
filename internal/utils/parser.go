@@ -117,11 +117,15 @@ func ParseRawRequest(filename string, targetURL string) (*ParsedRequest, error) 
 		if host == "" {
 			return nil, fmt.Errorf("no Host header found in request file and no -u URL provided")
 		}
+		host = strings.TrimSpace(host)
+
 		// Default to https
 		scheme := "https"
-		// Check port if suspicious?
-		// Just assume HTTPS for security tools usually, or HTTP.
-		// Maybe default to https, user can override with -u if needed (e.g. -u http://example.com)
+
+		// Ensure path starts with /
+		if !strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "http") {
+			path = "/" + path
+		}
 
 		rawURL := fmt.Sprintf("%s://%s%s", scheme, host, path)
 		finalURL, err = url.Parse(rawURL)

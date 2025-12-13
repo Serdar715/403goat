@@ -155,7 +155,16 @@ func (r *Runner) submitTask(wg *sync.WaitGroup, sem chan struct{}, bar *pb.Progr
 }
 
 func (r *Runner) executeRequest(method, payload string, extraHeaders map[string]string) {
-	u, _ := url.Parse(r.Config.URL)
+	// If payload is already a full URL, use it
+	if strings.HasPrefix(payload, "http") {
+		r.doRequest(method, payload, payload, extraHeaders)
+		return
+	}
+
+	u, err := url.Parse(r.Config.URL)
+	if err != nil {
+		return
+	}
 	hostPart := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
 
 	var fullURL string
@@ -165,7 +174,12 @@ func (r *Runner) executeRequest(method, payload string, extraHeaders map[string]
 		fullURL = hostPart + "/" + payload
 	}
 
+	r.doRequest(method, fullURL, payload, extraHeaders)
+}
+
+func (r *Runner) doRequest(method, fullURL, payload string, extraHeaders map[string]string) {
 	req, err := http.NewRequest(method, fullURL, nil)
+
 	if err != nil {
 		return
 	}
