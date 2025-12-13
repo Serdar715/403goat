@@ -100,10 +100,6 @@ func (r *Runner) Run() {
 				"User-Agent": "Googlebot/2.1",
 			})
 
-			// 4. WAF Confusion / Junk Headers - Test individually if possible or as a set?
-			// User said "tek sefer denenecek", implying individual tests.
-			// Testing all junk headers at once:
-			r.submitTask(&wg, sem, bar, method, payload, utils.JunkHeaders)
 		}
 	}
 

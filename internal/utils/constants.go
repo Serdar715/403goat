@@ -65,12 +65,10 @@ var BypassIPs = []string{
 	"0.0.0.0",
 	"0",
 	"127.1",
-	"2130706433",
 	"::1",
 	"192.168.0.1",
 	"10.0.0.1",
 	"172.16.0.1",
-	"8.8.8.8",
 	"127.0.0.1:80",
 	"127.0.0.1:443",
 	"127.0.0.1:8080",
@@ -82,18 +80,7 @@ var HTTPMethods = []string{
 	"HEAD",
 	"PUT",
 	"DELETE",
-	"CONNECT",
 	"OPTIONS",
-	"TRACE",
-	"PATCH",
-	"INVENTED",
-	"HACK",
-	"PROPFIND",
-	"MKCOL",
-	"COPY",
-	"MOVE",
-	"LOCK",
-	"UNLOCK",
 }
 
 var TopPrefixes = []string{
@@ -176,15 +163,4 @@ var TopSuffixes = []string{
 	"..;/", "../", "..://", "//..://",
 	"\\.\\..", "\\?\\",
 	".html", ".htm",
-}
-
-// Junk headers to confuse WAFs
-var JunkHeaders = map[string]string{
-	"X-Fuzz":       "1",
-	"X-Bug-Bounty": "True",
-	"X-WAF-Bypass": "True",
-	"X-Origin":     "localhost",
-	"X-Scanner":    "Burp",
-	"Max-Forwards": "0",
-	"X-Proxy-Mesh": "True",
 }
