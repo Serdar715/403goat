@@ -1,6 +1,6 @@
 module github.com/Serdar715/403goat
 
-go 1.25.4
+go 1.21
 
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
