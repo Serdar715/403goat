@@ -108,6 +108,7 @@ func parseFlags() utils.Config {
 	flag.BoolVar(&cfg.JSONOutput, "json", false, "JSON output")
 	flag.IntVar(&cfg.Verbose, "v", 0, "Verbose (0|1|2)")
 	flag.IntVar(&cfg.Threads, "threads", 15, "Number of threads")
+	flag.IntVar(&cfg.Threads, "t", 15, "Number of threads (alias for -threads)")
 	flag.IntVar(&cfg.Delay, "delay", 50, "Delay between requests (ms)")
 	flag.IntVar(&cfg.Timeout, "timeout", 10, "Timeout (seconds)")
 	flag.StringVar(&cfg.PrefixFile, "prefix", "", "Custom prefix file")
