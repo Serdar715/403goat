@@ -83,14 +83,33 @@ func (r *Runner) Run() {
 	countHeaders := len(utils.BypassHeaders) * (len(utils.BypassIPs) + 1)
 	// 4. Common Headers
 	countCommon := 3
+	// 5. Method Override Headers
+	countMethodOverride := len(utils.MethodOverrideHeaders) * len(utils.MethodOverrideValues)
+	// 6. Host Header Attacks
+	countHostHeader := len(utils.HostHeaderValues)
+	// 7. Content-Type Manipulation
+	countContentType := len(utils.ContentTypeValues)
+	// 8. Accept Header Manipulation
+	countAcceptHeader := len(utils.AcceptHeaderValues)
+	// 9. Cache Deception
+	countCacheDeception := len(utils.CacheDeceptionSuffixes)
+	// 10. Path Normalization
+	countPathNorm := len(utils.PathNormalizationPayloads)
 
-	totalRequests := countPath + countMethods + countHeaders + countCommon
+	totalRequests := countPath + countMethods + countHeaders + countCommon +
+		countMethodOverride + countHostHeader + countContentType + countAcceptHeader + countCacheDeception + countPathNorm
 
 	// Display scan info
 	utils.LogInfo("Scan Configuration:")
 	utils.LogInfo("  ├─ Path Payloads: %d", countPath)
 	utils.LogInfo("  ├─ HTTP Methods: %d", countMethods)
 	utils.LogInfo("  ├─ Header Tests: %d", countHeaders)
+	utils.LogInfo("  ├─ Method Override: %d", countMethodOverride)
+	utils.LogInfo("  ├─ Host Header: %d", countHostHeader)
+	utils.LogInfo("  ├─ Content-Type: %d", countContentType)
+	utils.LogInfo("  ├─ Accept Header: %d", countAcceptHeader)
+	utils.LogInfo("  ├─ Cache Deception: %d", countCacheDeception)
+	utils.LogInfo("  ├─ Path Normalization: %d", countPathNorm)
 	utils.LogInfo("  └─ Total Requests: %d", totalRequests)
 
 	if len(r.Config.CustomHeaders) > 0 {
@@ -142,6 +161,40 @@ func (r *Runner) Run() {
 	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Referer": r.Config.URL}, "header:Referer")
 	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Origin": r.Config.URL}, "header:Origin")
 	r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"User-Agent": "Googlebot/2.1"}, "header:User-Agent")
+
+	// TASK 5: Method Override Headers (POST with X-HTTP-Method-Override: GET, etc.)
+	for _, overrideHeader := range utils.MethodOverrideHeaders {
+		for _, overrideMethod := range utils.MethodOverrideValues {
+			r.submitTask(&wg, sem, bar, "POST", cleanPath, map[string]string{overrideHeader: overrideMethod}, "method-override:"+overrideHeader+"="+overrideMethod)
+		}
+	}
+
+	// TASK 6: Host Header Attacks
+	for _, hostValue := range utils.HostHeaderValues {
+		r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Host": hostValue}, "host-header:"+hostValue)
+	}
+
+	// TASK 7: Content-Type Manipulation
+	for _, contentType := range utils.ContentTypeValues {
+		r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Content-Type": contentType}, "content-type:"+contentType)
+	}
+
+	// TASK 8: Accept Header Manipulation
+	for _, acceptValue := range utils.AcceptHeaderValues {
+		r.submitTask(&wg, sem, bar, defaultMethod, cleanPath, map[string]string{"Accept": acceptValue}, "accept:"+acceptValue)
+	}
+
+	// TASK 9: Cache Deception (append static file extensions to path)
+	for _, suffix := range utils.CacheDeceptionSuffixes {
+		cachePayload := strings.TrimRight(cleanPath, "/") + suffix
+		r.submitTask(&wg, sem, bar, defaultMethod, cachePayload, nil, "cache-deception:"+suffix)
+	}
+
+	// TASK 10: Path Normalization (tab, null, backslash, semicolon, fragments)
+	for _, normPayload := range utils.PathNormalizationPayloads {
+		normPath := strings.TrimRight(cleanPath, "/") + normPayload
+		r.submitTask(&wg, sem, bar, defaultMethod, normPath, nil, "path-norm:"+normPayload)
+	}
 
 	wg.Wait()
 	close(r.Results)
