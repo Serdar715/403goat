@@ -84,7 +84,6 @@ var HTTPMethods = []string{
 	"HEAD",
 	"PUT",
 	"DELETE",
-	"OPTIONS",
 }
 
 // Path Normalization Bypass Payloads

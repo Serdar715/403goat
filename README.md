@@ -51,12 +51,7 @@
 ## ⚡ Quick Start
 
 ```bash
-# Clone & Build
-git clone https://github.com/Serdar715/403goat.git
-cd 403goat && go build -o 403goat .
-
-# Run
-./403goat -u https://target.com/admin
+git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 403goat . && ./403goat -u https://target.com/admin
 ```
 
 ---
@@ -284,7 +279,7 @@ go install github.com/Serdar715/403goat@latest
 </p>
 
 <p align="center">
-  <b>Developed by <a href="https://github.com/Serdar715">@Serdar715</a></b>
+  <b>Developed by <a href="https://github.com/Serdar715">XBug0</a></b>
 </p>
 
 <p align="center">
@@ -292,3 +287,4 @@ go install github.com/Serdar715/403goat@latest
     <img src="https://img.shields.io/badge/⭐_Star_This_Repo-FF0000?style=for-the-badge&labelColor=000000" alt="Star"/>
   </a>
 </p>
+
