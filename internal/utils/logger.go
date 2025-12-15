@@ -44,6 +44,6 @@ func PrintBanner() {
 	`
 	fmt.Println(Cyan + banner + Reset)
 	fmt.Println(White + "    403 Bypass Tool - 403goat" + Reset)
-	fmt.Println(White + "    v1.0.0 - Professional Edition" + Reset)
+	fmt.Println(White + "    v2.0.0 - Professional Edition" + Reset)
 	fmt.Println()
 }
