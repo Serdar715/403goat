@@ -36,11 +36,11 @@ func PrintBanner() {
 	BoldWhite := "\033[1;37m"
 
 	fmt.Println()
-	fmt.Println(BoldRed + "    __ __  ____  _____  __________  ___  ______" + Reset)
-	fmt.Println(BoldRed + "   / // / / __ \\/__  / / ____/ __ \\/   |/_  __/" + Reset)
-	fmt.Println(BoldRed + "  / // /_/ / / /  / / / / __/ / / / /| | / /   " + Reset)
-	fmt.Println(BoldRed + " /__  __/ /_/ /  / /__/ /_/ / /_/ / ___ |/ /    " + Reset)
-	fmt.Println(BoldRed + "   /_/  \\____/  /____/\\____/\\____/_/  |_/_/     " + Reset)
+	fmt.Println(BoldRed + `   _  _    ___  _____    ____  ___    _  _____` + Reset)
+	fmt.Println(BoldRed + `  | || |  / _ \|___ /   / ___|/ _ \  / \|_   _|` + Reset)
+	fmt.Println(BoldRed + `  | || |_| | | | |_ \  | |  _| | | |/ _ \ | |  ` + Reset)
+	fmt.Println(BoldRed + `  |__   _| |_| |___) | | |_| | |_| / ___ \| |  ` + Reset)
+	fmt.Println(BoldRed + `     |_|  \___/|____/   \____|\___/_/   \_\_|  ` + Reset)
 	fmt.Println()
 	fmt.Println(BoldWhite + "  ================================================" + Reset)
 	fmt.Println(BoldWhite + "           403 Bypass Scanner v2.0.0" + Reset)
