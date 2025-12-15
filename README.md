@@ -192,27 +192,28 @@ go install github.com/Serdar715/403goat@latest
 ## 🔴 Output Example
 
 ```
-  _  _    ___  ____                   _   
- | || |  / _ \|___ \                 | |  
- | || |_| | | | __) |_ _  ___   __ _ | |_ 
- |__   _| |_| ||__ <| _ |/ _ \ / _' || __|
-    | |   \___/ ___) | (_| (_) | (_| || |_ 
-    |_|        |____/ \__, |\___/ \__,_| \__|
+    __ __  ____  _____  __________  ___  ______
+   / // / / __ \/__  / / ____/ __ \/   |/_  __/
+  / // /_/ / / /  / / / / __/ / / / /| | / /   
+ /__  __/ /_/ /  / /__/ /_/ / /_/ / ___ |/ /    
+   /_/  \____/  /____/\____/\____/_/  |_/_/     
 
-    403 Bypass Tool - 403goat
-    v2.0.0 - Professional Edition
+  ================================================
+           403 Bypass Scanner v2.0.0
+  ================================================
+                  Author: XBug0
 
 [INFO] Scan Configuration:
-[INFO]   ├─ Path Payloads: 180
-[INFO]   ├─ HTTP Methods: 6
-[INFO]   ├─ Header Tests: 620
+[INFO]   ├─ Path Payloads: 289
+[INFO]   ├─ HTTP Methods: 5
+[INFO]   ├─ Header Tests: 481
 [INFO]   ├─ Method Override: 35
 [INFO]   ├─ Host Header: 12
 [INFO]   ├─ Content-Type: 9
 [INFO]   ├─ Accept Header: 9
 [INFO]   ├─ Cache Deception: 14
 [INFO]   ├─ Path Normalization: 43
-[INFO]   └─ Total Requests: 928
+[INFO]   └─ Total Requests: 897
 ----------------------------------------------------------------
 [200] GET /%2e/admin [path] - https://target.com/%2e/admin
 [200] GET /admin [header:X-Forwarded-For=127.0.0.1] - https://target.com/admin
