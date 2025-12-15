@@ -146,7 +146,7 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 | `-l` | URL list file | - |
 | `-w` | Custom wordlist | - |
 | `-H` | Custom header (multiple) | - |
-| `-threads` | Concurrent threads | `15` |
+| `-t, -threads` | Concurrent threads | `15` |
 | `-delay` | Request delay (ms) | `50` |
 | `-timeout` | Timeout (seconds) | `10` |
 | `-rate` | Rate limit (req/sec) | `0` |
