@@ -220,18 +220,6 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 
 ---
 
-## 🔴 Performance
-
-| Metric | Value |
-|:-------|:------|
-| **Total Payloads** | 928+ |
-| **Concurrent Threads** | Configurable (default: 15) |
-| **Rate Limiting** | Built-in |
-| **Memory Usage** | Low |
-| **Language** | Go (compiled) |
-
----
-
 ## ⚠️ Legal Disclaimer
 
 ```
