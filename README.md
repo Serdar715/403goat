@@ -82,31 +82,6 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 
 ---
 
-## 🔴 Installation
-
-### Linux / macOS
-
-```bash
-git clone https://github.com/Serdar715/403goat.git
-cd 403goat
-go build -o 403goat .
-sudo mv 403goat /usr/local/bin/
-```
-
-### Windows
-
-```powershell
-git clone https://github.com/Serdar715/403goat.git
-cd 403goat
-go build -o 403goat.exe .
-```
-
-### Go Install
-
-```bash
-go install github.com/Serdar715/403goat@latest
-```
-
 ---
 
 ## 🔴 Usage Examples
