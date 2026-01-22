@@ -153,7 +153,11 @@ func runSingleScan(ctx context.Context, cfg utils.Config, client *http.Client, a
 
 			fmt.Println(output)
 		} else if cfg.Verbose >= 1 {
-			fmt.Printf("[%s] %s %s - %s\n", color.RedString("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), res.URL)
+			techStr := ""
+			if res.Technique != "" {
+				techStr = fmt.Sprintf(" %s", color.HiBlackString("(%s)", res.Technique))
+			}
+			fmt.Printf("[%s] %s %s%s - %s\n", color.RedString("%d", res.StatusCode), color.CyanString(res.Method), color.MagentaString(res.Payload), techStr, res.URL)
 		}
 	}
 
